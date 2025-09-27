@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Logic Gates Visualizer — SVG Signals</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <style>
+    :root{
+      --bg:#071028; --card:rgba(255,255,255,0.03); --accent:#7c3aed; --muted:rgba(255,255,255,0.06);
+      --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    body{margin:0;min-height:100vh;background:linear-gradient(180deg,#041321 0%,#07142a 60%);color:#e6eef8}
+    header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px}
+    h1{font-size:18px;margin:0}
+    .container{padding:0 22px 48px}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:20px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:16px;box-shadow:0 8px 28px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.02);transition:transform .22s}
+    .card:hover{transform:translateY(-6px)}
+    .gate-name{font-weight:700;margin-bottom:8px}
+    .gate-preview{height:84px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.00));border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#c7d2fe;letter-spacing:1px}
+    .actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+    .btn{background:linear-gradient(90deg,var(--accent),#5b21b6);border:none;padding:8px 12px;border-radius:10px;color:white;cursor:pointer;font-weight:700;box-shadow:0 6px 18px rgba(92,33,180,0.18)}
+    .muted-btn{background:transparent;border:1px solid rgba(255,255,255,0.04);color:#dbeafe;padding:8px 10px;border-radius:10px;cursor:pointer}
+
+    .gate-page{display:none}
+    .gate-page.active{display:block}
+    .toolbar{display:flex;gap:12px;align-items:center;margin:18px 0}
+
+    .panel{display:grid;grid-template-columns:420px 1fr;gap:16px}
+    .visual{padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);background:linear-gradient(180deg,#061022,#07112a)}
+    .controls{display:flex;flex-direction:column;gap:12px}
+    .inputs{display:flex;gap:12px;flex-wrap:wrap}
+    .input-btn{background:#08122a;border-radius:12px;padding:10px 14px;border:1px solid rgba(255,255,255,0.03);cursor:pointer;display:flex;align-items:center;gap:10px;min-width:90px;justify-content:center}
+    .input-btn.on{background:linear-gradient(90deg,#a7f3d0,#34d399);color:#052e15}
+    .led{width:64px;height:64px;border-radius:50%;background:#071022;border:inset 0 -6px 18px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;margin:14px auto}
+    .led.glow{box-shadow:0 0 30px 8px rgba(124,58,237,0.24), inset 0 -6px 18px rgba(0,0,0,0.6);background:linear-gradient(180deg,#7c3aed,#5b21b6)}
+    .led-label{text-align:center;margin-top:6px;font-weight:700}
+
+    .truth-table{padding:12px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{padding:8px;text-align:center;border-bottom:1px dashed rgba(255,255,255,0.03)}
+    .log-list{margin-top:10px}
+
+    /* SVG signal style */
+    .signal{stroke:#ffffff;stroke-width:4;stroke-linecap:round;fill:none;opacity:.14}
+    .signal.on{stroke:#7c3aed;opacity:1;filter:drop-shadow(0 0 10px rgba(124,58,237,0.28))}
+    .pulse{stroke-dasharray:6 8;animation:dash 0.9s linear infinite}
+    @keyframes dash{to{stroke-dashoffset:-14}}
+
+    /* pulse moving circle along path using stroke-dashoffset */
+    .moving { stroke-dasharray: 240; stroke-dashoffset: 240; animation:move 0.9s linear forwards; }
+    @keyframes move { to { stroke-dashoffset: 0; } }
+
+    /* simple floating preview */
+    .gate-preview{animation:float 6s ease-in-out infinite}
+    @keyframes float{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+
+    @media (max-width:920px){.panel{grid-template-columns:1fr}.visual{order:2}.controls{order:1}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Logic Gates Visualizer</h1>
+    <div style="opacity:.85">Developed by <a href="https://kanishka.dev/" target="_blank" style="list-style-type: none; color: #c7d2fe">Kanishka Meddegoda</a></div>
+  </header>
+
+  <main class="container">
+    <section id="home" class="grid"></section>
+
+    <section id="gateView" class="gate-page">
+      <div class="toolbar">
+        <button id="backHome" class="btn">⬅ Back</button>
+        <div style="font-weight:700;font-size:16px" id="gateTitle">Gate</div>
+        <div style="flex:1"></div>
+      </div>
+
+      <div class="panel">
+        <div class="visual card">
+          <div id="svgWrap" style="height:220px;"></div>
+          <div class="led" id="outputLED" title="Output LED"></div>
+          <div class="led-label" id="outLabel">Output: 0</div>
+        </div>
+
+        <div class="controls">
+          <div class="card">
+            <div style="font-weight:700;margin-bottom:8px">Inputs</div>
+            <div class="inputs" id="inputsContainer"></div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button id="applyBtn" class="btn">Apply</button>
+              <button id="autoTruth" class="btn">Run All Combinations</button>
+              <button id="clearLog" class="muted-btn">Clear Table</button>
+            </div>
+          </div>
+
+          <div class="card truth-table">
+            <div style="font-weight:700;margin-bottom:8px">Truth Table</div>
+            <table id="logTable" aria-live="polite">
+              <thead><tr id="tableHead"></tr></thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+
+          <div class="card log-list">
+            <div style="font-weight:700;margin-bottom:8px">Recent Input Logs</div>
+            <div id="recentLogs"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+/* -------------------------
+   Gate definitions & SVG templates
+   ------------------------- */
+const gateData = {
+  OR: {
+    name: 'OR',
+    inputs: 2,
+    desc: 'Output is 1 if any input is 1',
+    fn: (ins) => ins.some(x => !!x),
+    svg: function(idPrefix) {
+      // Two-input OR with input paths and output path IDs tied to idPrefix
+      return `
+<svg viewBox="0 0 420 200" width="100%" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="glow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+
+  <!-- input lines -->
+  <path id="${idPrefix}-in0" class="signal" d="M30 60 C120 60 140 50 200 100" />
+  <path id="${idPrefix}-in1" class="signal" d="M30 140 C120 140 140 150 200 100" />
+
+  <!-- OR shape (approx) -->
+  <path d="M200 100 C240 60 320 60 360 100 C320 140 240 140 200 100 Z" stroke="rgba(255,255,255,0.06)" fill="rgba(255, 255, 255, 0)"/>
+  <path d="M190 100 C230 58 310 58 350 100 C310 142 230 142 190 100 Z" stroke="rgba(255,255,255,0.06)" fill="none" />
+
+  <!-- output -->
+  <path id="${idPrefix}-out" class="signal" d="M360 100 L390 100" />
+</svg>`;
+    }
+  },
+
+  AND: {
+    name: 'AND', inputs: 2,
+    desc: 'Output is 1 only if all inputs are 1',
+    fn: (ins) => ins.every(x => !!x),
+    svg: function(idPrefix) {
+      return `
+<svg viewBox="0 0 420 200" width="100%" height="200" xmlns="http://www.w3.org/2000/svg">
+  <path id="${idPrefix}-in0" class="signal" d="M30 60 L160 60" />
+  <path id="${idPrefix}-in1" class="signal" d="M30 140 L160 140" />
+  <!-- AND body -->
+  <path d="M160 40 L260 40 A60 60 0 0 1 260 160 L160 160 Z" stroke="rgba(255,255,255,0.06)" fill="rgba(255,255,255,0.01)"/>
+  <path id="${idPrefix}-out" class="signal" d="M320 100 L390 100" />
+  <path d="M260 40 L260 160" stroke="rgba(255,255,255,0.04)" fill="none"/>
+</svg>`;
+    }
+  },
+
+  NOT: {
+    name:'NOT', inputs:1,
+    desc:'Unary NOT inverts input (bubble output)',
+    fn:(ins)=> !ins[0],
+    svg: function(idPrefix){
+      return `
+<svg viewBox="0 0 420 200" width="100%" height="200" xmlns="http://www.w3.org/2000/svg">
+  <path id="${idPrefix}-in0" class="signal" d="M30 100 L160 100" />
+  <path d="M160 60 L260 100 L160 140 Z" stroke="rgba(255,255,255,0.06)" fill="rgba(255,255,255,0.01)"/>
+  <circle cx="290" cy="100" r="10" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.04)"/>
+  <path id="${idPrefix}-out" class="signal" d="M302 100 L390 100" />
+</svg>`;
+    }
+  },
+
+  XOR: {
+    name:'XOR', inputs:2,
+    desc:'Exclusive OR — output 1 when exactly one input is 1',
+    fn:(ins)=> (!!ins[0]) ^ (!!ins[1]),
+    svg: function(idPrefix){
+      return `
+<svg viewBox="0 0 420 200" width="100%" height="200" xmlns="http://www.w3.org/2000/svg">
+  <path d="M30 50 C90 50 120 70 200 100" stroke="rgba(255,255,255,0.04)" fill="none"/>
+  <path id="${idPrefix}-in0" class="signal" d="M30 80 C110 80 140 90 200 100" />
+  <path id="${idPrefix}-in1" class="signal" d="M30 140 C110 140 140 130 200 100" />
+  <!-- XOR double curve + outer -->
+  <path d="M190 60 C240 50 320 60 360 100 C320 140 240 150 190 140" stroke="rgba(255,255,255,0.06)" fill="rgba(255,255,255,0.01)"/>
+  <path d="M170 60 C220 50 300 60 340 100 C300 140 220 150 170 140" stroke="rgba(255,255,255,0.04)" fill="none"/>
+  <path id="${idPrefix}-out" class="signal" d="M360 100 L390 100" />
+</svg>`;
+    }
+  },
+
+  NAND: {
+    name:'NAND', inputs:2,
+    desc:'Negated AND (outputs opposite of AND)',
+    fn:(ins)=> !(ins.every(x=>!!x)),
+    svg: function(idPrefix){
+      return `
+<svg viewBox="0 0 420 200" width="100%" height="200" xmlns="http://www.w3.org/2000/svg">
+  <path id="${idPrefix}-in0" class="signal" d="M30 60 L160 60" />
+  <path id="${idPrefix}-in1" class="signal" d="M30 140 L160 140" />
+  <path d="M160 40 L260 40 A60 60 0 0 1 260 160 L160 160 Z" stroke="rgba(255,255,255,0.06)" fill="rgba(255,255,255,0.01)"/>
+  <circle cx="300" cy="100" r="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.04)"/>
+  <path id="${idPrefix}-out" class="signal" d="M308 100 L390 100" />
+</svg>`;
+    }
+  },
+
+  NOR: {
+    name:'NOR', inputs:2,
+    desc:'Negated OR',
+    fn:(ins)=> !(ins.some(x=>!!x)),
+    svg: function(idPrefix){
+      return `
+<svg viewBox="0 0 420 200" width="100%" height="200" xmlns="http://www.w3.org/2000/svg">
+  <path id="${idPrefix}-in0" class="signal" d="M30 60 C120 60 140 50 200 100" />
+  <path id="${idPrefix}-in1" class="signal" d="M30 140 C120 140 140 150 200 100" />
+  <path d="M200 100 C240 60 320 60 360 100 C320 140 240 140 200 100 Z" stroke="rgba(255,255,255,0.06)" fill="rgba(255,255,255,0.01)"/>
+  <circle cx="380" cy="100" r="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.04)"/>
+  <path id="${idPrefix}-out" class="signal" d="M388 100 L410 100" />
+</svg>`;
+    }
+  },
+
+  XNOR: {
+    name:'XNOR', inputs:2,
+    desc:'Negated XOR',
+    fn:(ins)=> !((!!ins[0]) ^ (!!ins[1])),
+    svg: function(idPrefix){
+      // reuse XOR and bubble
+      return `
+<svg viewBox="0 0 420 200" width="100%" height="200" xmlns="http://www.w3.org/2000/svg">
+  <path d="M30 50 C90 50 120 70 200 100" stroke="rgba(255,255,255,0.04)" fill="none"/>
+  <path id="${idPrefix}-in0" class="signal" d="M30 80 C110 80 140 90 200 100" />
+  <path id="${idPrefix}-in1" class="signal" d="M30 140 C110 140 140 130 200 100" />
+  <path d="M190 60 C240 50 320 60 360 100 C320 140 240 150 190 140" stroke="rgba(255,255,255,0.06)" fill="rgba(255,255,255,0.01)"/>
+  <path d="M170 60 C220 50 300 60 340 100 C300 140 220 150 170 140" stroke="rgba(255,255,255,0.04)" fill="none"/>
+  <circle cx="380" cy="100" r="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.04)"/>
+  <path id="${idPrefix}-out" class="signal" d="M388 100 L410 100" />
+</svg>`;
+    }
+  }
+};
+
+/* -------------------------
+   UI wiring + behavior
+   ------------------------- */
+
+let currentGate = null;
+let currentInputs = [];
+let logs = [];
+
+function renderHome(){
+  const $home = $('#home').empty();
+  Object.keys(gateData).forEach(key=>{
+    const g = gateData[key];
+    const $card = $("<div class='card'></div>");
+    $card.append(`<div class='gate-name'>${g.name}</div>`);
+    $card.append(`<div class='gate-preview' aria-hidden='true'>${g.name} GATE</div>`);
+    const $actions = $(`<div class='actions'></div>`);
+    $actions.append($(`<button class='btn loadGate' data-gate='${g.name}'>Open</button>`));
+    $actions.append($(`<button class='muted-btn info' data-gate='${g.name}'>Info</button>`));
+    $card.append($actions);
+    $home.append($card);
+  });
+}
+
+function loadGateFromServer(gateName){
+  // simulated AJAX
+  const d = $.Deferred();
+  Swal.showLoading();
+  setTimeout(()=>{
+    Swal.close();
+    if(gateData[gateName]) d.resolve($.extend({name:gateName}, gateData[gateName]));
+    else d.reject('Unknown gate');
+  },220);
+  return d.promise();
+}
+
+function openGate(gateName){
+  loadGateFromServer(gateName).done(g=>{
+    currentGate = g;
+    currentInputs = new Array(g.inputs).fill(0);
+    logs = [];
+    $('#home').hide();
+    $('#gateView').addClass('active').show();
+    $('#gateTitle').text(g.name + ' gate');
+    renderGateVisual(g);
+    renderInputs();
+    renderTableHead();
+    updateOutput();
+  }).fail(err=>{
+    Swal.fire('Error',err,'error');
+  });
+}
+
+function renderGateVisual(g){
+  // unique prefix to avoid ID clashes
+  const idPrefix = 'g_' + g.name + '_' + Date.now().toString(36);
+  const svg = g.svg(idPrefix);
+  $('#svgWrap').html(svg);
+
+  // ensure signals reset
+  // initially set classes to off
+  for(let i=0;i<g.inputs;i++){
+    $(`#${idPrefix}-in${i}`).removeClass('on moving pulse');
+  }
+  $(`#${idPrefix}-out`).removeClass('on moving pulse');
+
+  // store prefix for later updates
+  $('#svgWrap').data('prefix', idPrefix);
+}
+
+function renderInputs(){
+  const $c = $('#inputsContainer').empty();
+  currentInputs.forEach((v,i)=>{
+    const $btn = $(`<div class='input-btn' data-i='${i}' role='button' aria-pressed='${v}'>In${i+1}: <span class='val'>${v}</span></div>`);
+    if(v===1) $btn.addClass('on');
+    $btn.on('click', function(){
+      const idx = $(this).data('i');
+      currentInputs[idx] = currentInputs[idx]^1;
+      $(this).toggleClass('on', currentInputs[idx]===1);
+      $(this).find('.val').text(currentInputs[idx]);
+      animatePulse($(this));
+      updateOutput(); // live update visualization
+    });
+    $c.append($btn);
+  });
+}
+
+function animatePulse($el){
+  $el.css('transform','scale(.98)');
+  setTimeout(()=> $el.css('transform',''),110);
+}
+
+function computeOutput(){
+  if(!currentGate) return 0;
+  try{ const result = currentGate.fn(currentInputs.map(x=>x?1:0)); return result?1:0; } catch(e){ return 0; }
+}
+
+function updateOutput(){
+  const out = computeOutput();
+  const $led = $('#outputLED');
+  $('#outLabel').text('Output: '+out);
+  if(out===1) $led.addClass('glow'); else $led.removeClass('glow');
+
+  // animate/paint SVG lines according to inputs and output
+  const prefix = $('#svgWrap').data('prefix');
+  if(!prefix) return;
+  // inputs
+  currentInputs.forEach((v,i)=>{
+    const $p = $(`#${prefix}-in${i}`);
+    if($p.length){
+      $p.removeClass('on moving pulse');
+      if(v===1){
+        $p.addClass('on pulse');
+        // trigger moving effect by reflow
+        void $p[0].offsetWidth;
+        $p.addClass('moving');
+        // remove moving after short time to allow re-trigger
+        setTimeout(()=> { $p.removeClass('moving'); }, 900);
+      }
+    }
+  });
+  // output line
+  const $out = $(`#${prefix}-out`);
+  $out.removeClass('on moving pulse');
+  if(out===1){
+    $out.addClass('on pulse');
+    void $out[0].offsetWidth;
+    $out.addClass('moving');
+    setTimeout(()=> { $out.removeClass('moving'); }, 900);
+  }
+}
+
+/* Truth table / logs */
+function applyInputs(){
+  const out = computeOutput();
+  logs.unshift({inputs: currentInputs.slice(), output: out});
+  renderTableBody();
+  renderRecentLogs();
+}
+
+function renderTableHead(){
+  const $h = $('#tableHead').empty();
+  for(let i=0;i<currentInputs.length;i++) $h.append(`<th>In${i+1}</th>`);
+  $h.append(`<th>Out</th><th>Action</th>`);
+}
+
+function renderTableBody(){
+  const $b = $('#tableBody').empty();
+  logs.forEach((r,idx)=>{
+    const tr = $('<tr></tr>');
+    r.inputs.forEach(v=>tr.append(`<td>${v}</td>`));
+    tr.append(`<td>${r.output}</td>`);
+    tr.append(`<td><button class='btn del' data-i='${idx}'>Del</button></td>`);
+    $b.append(tr);
+  });
+  $b.find('.del').on('click', function(){
+    const i = $(this).data('i'); logs.splice(i,1); renderTableBody(); renderRecentLogs();
+  });
+}
+
+function renderRecentLogs(){
+  const $r = $('#recentLogs').empty();
+  logs.slice(0,6).forEach(l=>{
+    const $row = $(`<div style="background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><div>${l.inputs.join(' | ')} → ${l.output}</div></div>`);
+    $r.append($row);
+  });
+}
+
+/* Run all combos for n inputs */
+function runAllCombos(){
+  const n = currentInputs.length;
+  const total = 1 << n;
+  logs = [];
+  for(let m=0;m<total;m++){
+    const arr = [];
+    for(let b=0;b<n;b++) arr.push( (m>>b) & 1 );
+    currentInputs = arr.slice();
+    renderInputs();
+    // small visual update per iteration (but don't wait)
+    updateOutput();
+    const out = computeOutput();
+    logs.unshift({inputs: arr.slice(), output: out});
+  }
+  renderTableBody(); renderRecentLogs();
+}
+
+
+/* init handlers */
+$(function(){
+  renderHome();
+
+  $(document).on('click','.loadGate', function(){ openGate($(this).data('gate')); });
+  $(document).on('click','.info', function(){
+    const g = gateData[$(this).data('gate')];
+    Swal.fire({title: g.name, html: `<b>${g.desc}</b><br>Inputs: ${g.inputs}`});
+  });
+
+  $('#backHome').on('click', function(){ $('#gateView').removeClass('active').hide(); $('#home').show(); });
+  $('#applyBtn').on('click', function(){ applyInputs(); });
+  $('#autoTruth').on('click', function(){ runAllCombos(); updateOutput(); });
+  $('#clearLog').on('click', function(){ logs=[]; renderTableBody(); renderRecentLogs(); });
+  $('#downloadCSV').on('click', downloadCSV);
+
+  // ensure visual updates when input buttons are clicked (delegated)
+  $('#inputsContainer').on('click', '.input-btn', function(){ updateOutput(); });
+
+  $('#gateView').hide();
+});
+  </script>
+
+  <script type="text/javascript">
+	atOptions = {
+		'key' : 'dfb69d494576fbe63cf78483a8f96230',
+		'format' : 'iframe',
+		'height' : 90,
+		'width' : 728,
+		'params' : {}
+	};
+</script>
+<script type="text/javascript" src="//www.highperformanceformat.com/dfb69d494576fbe63cf78483a8f96230/invoke.js"></script>
+
+</body>
+</html>
