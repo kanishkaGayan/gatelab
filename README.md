@@ -27,8 +27,8 @@ Built with **HTML, CSS, JavaScript, jQuery, and SweetAlert**.
 
 ## 📂 Project Structure
 gatelab/
-│── index.html # Main app
-│── README.md # Project documentation
+- │── index.html # Main app
+- │── README.md # Project documentation
 
 
 ---
