@@ -459,16 +459,37 @@ $(function(){
 });
   </script>
 
-  <script type="text/javascript">
-	atOptions = {
-		'key' : 'dfb69d494576fbe63cf78483a8f96230',
-		'format' : 'iframe',
-		'height' : 90,
-		'width' : 728,
-		'params' : {}
-	};
-</script>
-<script type="text/javascript" src="//www.highperformanceformat.com/dfb69d494576fbe63cf78483a8f96230/invoke.js"></script>
+
+  <style>
+    .responsive-ad {
+      width: 100%;
+      max-width: 728px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .responsive-ad iframe {
+      width: 100% !important;
+      height: 90px !important;
+      display: block;
+      border: none;
+      margin: 0 auto;
+    }
+  </style>
+
+  <div class="responsive-ad">
+    <script type="text/javascript">
+      atOptions = {
+        'key' : 'dfb69d494576fbe63cf78483a8f96230',
+        'format' : 'iframe',
+        'height' : 90,
+        'width' : '100%',
+        'params' : {}
+      };
+    </script>
+    <script type="text/javascript" src="//www.highperformanceformat.com/dfb69d494576fbe63cf78483a8f96230/invoke.js"></script>
+  </div>
 
 </body>
 </html>
